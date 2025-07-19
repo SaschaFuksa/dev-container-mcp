@@ -1,5 +1,5 @@
 [project]
-name = "dev-container-template"
+name = "dev-container-mcp"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -8,23 +8,21 @@ dependencies = [
     "requests",
     "flask",
     "fastapi",
-    "uvicorn"
-    
-    # --- Optional: MCP (kommentiert) ---
-    # "mcp",
-    # "pydantic",
-    # "websockets",
-    # "asyncio",
-    # "nest-asyncio",
-    # "langchain",
-    # "langchain-core",
-    # "langchain-community",
-    # "langchain-mcp-adapters",
-    # "langchain-ollama",
-    # "httpx"
+    "uvicorn",
+    "mcp",
+    "pydantic",
+    "websockets",
+    "asyncio",
+    "nest-asyncio",
+    "langchain",
+    "langchain-core",
+    "langchain-community",
+    "langchain-mcp-adapters",
+    "langchain-ollama",
+    "httpx"
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "mypy",

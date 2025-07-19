@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start MCP Server",
+            "type": "shell",
+            "command": "python mcp-server.py --server_type=sse",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Start MCP Client",
+            "type": "shell",
+            "command": "python mcp-client.py",
+            "isBackground": false,
+            "problemMatcher": []
+        },
+        {
+            "label": "Start Both",
+            "dependsOn": [
+                "Start MCP Server",
+                "Start MCP Client"
+            ],
+            "dependsOrder": "parallel"
+        }
+    ]
+}

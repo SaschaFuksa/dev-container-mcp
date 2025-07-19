@@ -41,12 +41,14 @@
     8000,
     5000
   ],
-  "postCreateCommand": "pip install uv && uv sync",
   "remoteUser": "vscode",
   "containerEnv": {
+    "VIRTUAL_ENV": "/usr/local",
+    "PATH": "/home/vscode/.local/bin:/usr/local/bin:/usr/bin:/bin",
     "GIT_AUTHOR_NAME": "SaschaFuksa",
     "GIT_AUTHOR_EMAIL": "sascha.fuksa@gmail.com",
     "GIT_COMMITTER_NAME": "SaschaFuksa",
     "GIT_COMMITTER_EMAIL": "sascha.fuksa@gmail.com"
-  }
+  },
+  "postCreateCommand": "sudo pip install uv && sudo uv pip install --system . && sudo uv pip install --system --group dev"
 }
