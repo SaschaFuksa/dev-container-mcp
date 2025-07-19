@@ -4,14 +4,14 @@
         {
             "label": "Start MCP Server",
             "type": "shell",
-            "command": "python mcp-server.py --server_type=sse",
+            "command": "python mcp_server.py --server_type=sse",
             "isBackground": true,
             "problemMatcher": []
         },
         {
             "label": "Start MCP Client",
             "type": "shell",
-            "command": "python mcp-client.py",
+            "command": "python mcp_client.py",
             "isBackground": false,
             "problemMatcher": []
         },

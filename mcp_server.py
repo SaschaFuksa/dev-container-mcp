@@ -63,13 +63,14 @@ def add_data(query: str) -> bool:
     """
     conn, cursor = init_db()
     try:
-        logger.info(f"\n\nExecuting add_data with query: {query}")
+        logger.info("\n\nExecuting add_data with query: %s", query)
         cursor.execute(query)
         conn.commit()
-        return True
     except sqlite3.Error as e:
-        logger.info(f"Error adding data: {e}")
+        logger.info("Error adding data: %s", e)
         return False
+    else:
+        return True
     finally:
         conn.close()
 
@@ -103,11 +104,11 @@ def read_data(query: str = "SELECT * FROM people") -> list:
     """
     conn, cursor = init_db()
     try:
-        logger.info(f"\n\nExecuting read_data with query: {query}")
+        logger.info("\n\nExecuting read_data with query: %s", query)
         cursor.execute(query)
         return cursor.fetchall()
     except sqlite3.Error as e:
-        logger.info(f"Error reading data: {e}")
+        logger.info("Error reading data: %s", e)
         return []
     finally:
         conn.close()

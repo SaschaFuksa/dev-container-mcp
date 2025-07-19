@@ -1,0 +1,1 @@
+This MCP server can perform basic arithmetic functions. Use tools like add, subtract, multiply, and divide.
