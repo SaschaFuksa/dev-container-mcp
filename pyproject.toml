@@ -1,0 +1,40 @@
+[project]
+name = "dev-container-template"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests",
+    "flask",
+    "fastapi",
+    "uvicorn"
+    
+    # --- Optional: MCP (kommentiert) ---
+    # "mcp",
+    # "pydantic",
+    # "websockets",
+    # "asyncio",
+    # "nest-asyncio",
+    # "langchain",
+    # "langchain-core",
+    # "langchain-community",
+    # "langchain-mcp-adapters",
+    # "langchain-ollama",
+    # "httpx"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "mypy",
+    "ruff"
+]
+
+# Optional: Data Science
+# data = [
+#     "pandas",
+#     "numpy",
+#     "matplotlib",
+#     "jupyter"
+# ]
