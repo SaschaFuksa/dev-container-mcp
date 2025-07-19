@@ -1,4 +1,5 @@
 import asyncio
+import logger
 
 import httpx
 import nest_asyncio
@@ -11,6 +12,8 @@ from langchain_core.prompts import (
 )
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_ollama import ChatOllama
+
+logger = logger.getLogger(__name__)
 
 # Enable nested asyncio for Jupyter-like environments
 nest_asyncio.apply()
@@ -54,7 +57,7 @@ Question: {input}
 
 class LangchainMCPClient:
     def __init__(self, mcp_server_url="http://127.0.0.1:8000"):
-        print("Initializing LangchainMCPClient...")
+        logger.info("Initializing LangchainMCPClient...")
         self.llm = ChatOllama(
             model="llama3.2",
             temperature=0.6,
@@ -75,7 +78,7 @@ class LangchainMCPClient:
                 # },
             },
         }
-        print(f"Connecting to MCP server at {mcp_server_url}...")
+        logger.info(f"Connecting to MCP server at {mcp_server_url}...")
         self.mcp_client = MultiServerMCPClient(server_config)
         self.chat_history = []
 
@@ -101,62 +104,62 @@ class LangchainMCPClient:
         """Check if the MCP server is accessible"""
         base_url = self.mcp_client.connections["default"]["url"].replace("/sse", "")
         try:
-            print(f"Testing connection to {base_url}...")
+            logger.info(f"Testing connection to {base_url}...")
             async with httpx.AsyncClient(timeout=5.0) as client:  # Shorter timeout
                 # Try the SSE endpoint directly
                 sse_url = f"{base_url}/sse"
-                print(f"Checking SSE endpoint at {sse_url}...")
+                logger.info(f"Checking SSE endpoint at {sse_url}...")
                 response = await client.get(sse_url, timeout=5.0)
-                print(f"Got response: {response.status_code}")
+                logger.info(f"Got response: {response.status_code}")
                 if response.status_code == 200:
-                    print("SSE endpoint is accessible!")
+                    logger.info("SSE endpoint is accessible!")
                     return True
 
-                print(f"Server responded with status code: {response.status_code}")
+                logger.info(f"Server responded with status code: {response.status_code}")
                 return False
 
         except httpx.ConnectError:
-            print(f"Could not connect to server at {base_url}")
-            print("Please ensure the server is running and the port is correct")
+            logger.info(f"Could not connect to server at {base_url}")
+            logger.info("Please ensure the server is running and the port is correct")
             return False
         except httpx.ReadTimeout:
-            print("Connection established but timed out while reading")
-            print("This is normal for SSE connections - proceeding...")
+            logger.info("Connection established but timed out while reading")
+            logger.info("This is normal for SSE connections - proceeding...")
             return True
         except Exception as e:
-            print(f"Error connecting to MCP server: {type(e).__name__} - {e!s}")
+            logger.info(f"Error connecting to MCP server: {type(e).__name__} - {e!s}")
             return False
 
     async def initialize_agent(self):
         """Initialize the agent with tools and prompt template"""
-        print("\nInitializing agent...")
+        logger.info("\nInitializing agent...")
         if not await self.check_server_connection():
             raise ConnectionError(
                 "Cannot connect to MCP server. Please ensure the server is running.",
             )
 
         try:
-            print("Getting available tools...")
+            logger.info("Getting available tools...")
             mcp_tools = await self.mcp_client.get_tools()
 
             # Verify tools are properly initialized
-            print("Verifying tools...")
+            logger.info("Verifying tools...")
             for i, tool in enumerate(mcp_tools):
-                print(f"\nTool {i}:")
-                print(f"  Name: {tool.name if hasattr(tool, 'name') else 'No name'}")
-                print(
+                logger.info(f"\nTool {i}:")
+                logger.info(f"  Name: {tool.name if hasattr(tool, 'name') else 'No name'}")
+                logger.info(
                     f"  Description: {tool.description if hasattr(tool, 'description') else 'No description'}",
                 )
-                print(f"  Type: {type(tool)}")
-                print(f"  Callable: {callable(tool)}")
-                print(
+                logger.info(f"  Type: {type(tool)}")
+                logger.info(f"  Callable: {callable(tool)}")
+                logger.info(
                     f"  Methods: {[method for method in dir(tool) if not method.startswith('_')]}",
                 )
-                print(f"  Full tool: {tool.__dict__}")
+                logger.info(f"  Full tool: {tool.__dict__}")
 
                 # Test call
                 try:
-                    print("  Testing tool call...")
+                    logger.info("  Testing tool call...")
                     if i == 0:
                         test_query = (
                             "INSERT INTO people (name, age, profession) VALUES ('Test', 30, 'Test')"
@@ -164,9 +167,9 @@ class LangchainMCPClient:
                     else:
                         test_query = "SELECT * FROM people"
                     result = await tool.ainvoke({"query": test_query})
-                    print(f"  Test result: {result}")
+                    logger.info(f"  Test result: {result}")
                 except Exception as e:
-                    print(f"  Test error: {type(e).__name__} - {e!s}")
+                    logger.info(f"  Test error: {type(e).__name__} - {e!s}")
 
             if len(mcp_tools) < 2:
                 raise ValueError(f"Expected 2 tools, got {len(mcp_tools)}")
@@ -176,9 +179,9 @@ class LangchainMCPClient:
                 try:
                     tool = mcp_tools[0]  # add_data tool
                     if not tool:
-                        print("Tool 0 (add_data) not properly initialized")
+                        logger.info("Tool 0 (add_data) not properly initialized")
                         return "Error: Add data tool not properly initialized"
-                    print(f"Executing add_data with query: {query}")
+                    logger.info(f"Executing add_data with query: {query}")
                     # Clean up the query
                     query = query.strip().replace("\n", " ").replace("  ", " ")
                     # Fix common formatting issues
@@ -195,26 +198,26 @@ class LangchainMCPClient:
                                     query = f"INSERT INTO people (name, age, profession) VALUES ('{name}', {age}, '{profession}')"
                     # Call the tool using the async method
                     result = await tool.ainvoke({"query": query})
-                    print(f"Add data result: {result}")
+                    logger.info(f"Add data result: {result}")
                     if result:
                         return "Data added successfully"  # Clear success message
                     return "Failed to add data"  # Clear failure message
                 except Exception as e:
-                    print(f"Error in add_data_wrapper: {type(e).__name__} - {e!s}")
+                    logger.info(f"Error in add_data_wrapper: {type(e).__name__} - {e!s}")
                     return f"Error adding data: {e!s}"
 
             async def read_data_wrapper(query: str = "SELECT * FROM people"):
                 try:
                     tool = mcp_tools[1]  # read_data tool
                     if not tool:
-                        print("Tool 1 (read_data) not properly initialized")
+                        logger.info("Tool 1 (read_data) not properly initialized")
                         return "Error: Read data tool not properly initialized"
-                    print(f"Executing read_data with query: {query}")
+                    logger.info(f"Executing read_data with query: {query}")
                     # Clean up the query
                     query = query.strip().replace("\n", " ").replace("  ", " ")
                     # Call the tool using the async method
                     result = await tool.ainvoke({"query": query})
-                    print(f"Read data result: {result}")
+                    logger.info(f"Read data result: {result}")
                     if not result:
                         return "No records found"
 
@@ -246,7 +249,7 @@ class LangchainMCPClient:
 
                     return "\n".join(output)
                 except Exception as e:
-                    print(f"Error in read_data_wrapper: {type(e).__name__} - {e!s}")
+                    logger.info(f"Error in read_data_wrapper: {type(e).__name__} - {e!s}")
                     return f"Error reading data: {e!s}"
 
             # Create Langchain tools with async functions
@@ -265,7 +268,7 @@ class LangchainMCPClient:
                 ),
             ]
 
-            print(f"Found {len(self.tools)} tools")
+            logger.info(f"Found {len(self.tools)} tools")
 
             # Create the prompt template with system message
             system_message = SystemMessage(content=self.SYSTEM_PROMPT)
@@ -288,24 +291,24 @@ class LangchainMCPClient:
                 return_intermediate_steps=True,  # Ensure we get the steps
             )
 
-            print("\nAvailable tools:")
+            logger.info("\nAvailable tools:")
             for tool in self.tools:
-                print(f"- {tool.name}: {tool.description}")
+                logger.info(f"- {tool.name}: {tool.description}")
 
         except Exception as e:
-            print(f"\nError initializing agent: {e}")
+            logger.info(f"\nError initializing agent: {e}")
             raise
 
     async def process_message(self, user_input: str) -> str:
-        """Process a single user message and return the agent's response"""
+            logger.info(f"\nProcessing message: {user_input}")
         try:
-            print("\nProcessing message:", user_input)
+            logger.info("\nProcessing message:", user_input)
             # Execute the agent
             response = await self.agent_executor.ainvoke(
                 {"input": user_input, "chat_history": self.chat_history},
             )
 
-            print("\nRaw response:", response)
+            logger.info("\nRaw response:", response)
             final_result = None
 
             # Get the result from intermediate steps
@@ -344,50 +347,50 @@ class LangchainMCPClient:
                         ],
                     )
 
-                    print("\nFinal result:", final_result)
+                    logger.info("\nFinal result:", final_result)
                     return final_result
 
             return "Could not process the request. Please try again."
 
         except Exception as e:
             error_msg = f"Error processing message: {type(e).__name__} - {e!s}\nPlease try rephrasing your request."
-            print(f"\nError processing message: {type(e).__name__} - {e!s}")
-            print(f"Full error: {e.__dict__}")
+            logger.info(f"\nError processing message: {type(e).__name__} - {e!s}")
+            logger.info(f"Full error: {e.__dict__}")
             return error_msg
 
     async def interactive_chat(self):
         """Start an interactive chat session"""
-        print("Chat session started. Type 'exit' to quit.")
+        logger.info("Chat session started. Type 'exit' to quit.")
 
         while True:
             user_input = input("\nYou: ")
             if user_input.lower() == "exit":
-                print("Ending chat session...")
+                logger.info("Ending chat session...")
                 break
 
             response = await self.process_message(user_input)
-            print("\nAgent:", response)
+            logger.info("\nAgent:", response)
 
 
 async def main():
     try:
-        print("Starting Langchain MCP Client...")
+        logger.info("Starting Langchain MCP Client...")
         client = LangchainMCPClient()
 
-        print("\nInitializing agent...")
+        logger.info("\nInitializing agent...")
         await client.initialize_agent()
 
-        print("\nStarting interactive chat...")
+        logger.info("\nStarting interactive chat...")
         await client.interactive_chat()
 
     except ConnectionError as e:
-        print(f"\nConnection Error: {e}")
-        print("Please check that:")
-        print("1. The MCP server is running (python server.py --server_type=sse)")
-        print("2. The server URL is correct (http://127.0.0.1:8000)")
-        print("3. The server is accessible from your machine")
+        logger.info(f"\nConnection Error: {e}")
+        logger.info("Please check that:")
+        logger.info("1. The MCP server is running (python server.py --server_type=sse)")
+        logger.info("2. The server URL is correct (http://127.0.0.1:8000)")
+        logger.info("3. The server is accessible from your machine")
     except Exception as e:
-        print(f"\nUnexpected error: {type(e).__name__} - {e!s}")
+        logger.info(f"\nUnexpected error: {type(e).__name__} - {e!s}")
 
 
 if __name__ == "__main__":

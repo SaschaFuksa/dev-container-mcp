@@ -1,12 +1,24 @@
+"""SQLite Demo for FastMCP Server."""
+
 import argparse
+import logging
 import sqlite3
 
 from mcp.server.fastmcp import FastMCP
 
+logger = logging.getLogger(__name__)
+
 mcp = FastMCP("sqlite-demo")
 
 
-def init_db():
+def init_db() -> tuple[sqlite3.Connection, sqlite3.Cursor]:
+    """
+    Initialize the SQLite database and create the 'people' table if it does not exist.
+
+    Returns:
+        tuple[sqlite3.Connection, sqlite3.Cursor]: The database connection and cursor.
+
+    """
     conn = sqlite3.connect("demo.db")
     cursor = conn.cursor()
     cursor.execute("""
@@ -51,12 +63,12 @@ def add_data(query: str) -> bool:
     """
     conn, cursor = init_db()
     try:
-        print(f"\n\nExecuting add_data with query: {query}")
+        logger.info(f"\n\nExecuting add_data with query: {query}")
         cursor.execute(query)
         conn.commit()
         return True
     except sqlite3.Error as e:
-        print(f"Error adding data: {e}")
+        logger.info(f"Error adding data: {e}")
         return False
     finally:
         conn.close()
@@ -91,11 +103,11 @@ def read_data(query: str = "SELECT * FROM people") -> list:
     """
     conn, cursor = init_db()
     try:
-        print(f"\n\nExecuting read_data with query: {query}")
+        logger.info(f"\n\nExecuting read_data with query: {query}")
         cursor.execute(query)
         return cursor.fetchall()
     except sqlite3.Error as e:
-        print(f"Error reading data: {e}")
+        logger.info(f"Error reading data: {e}")
         return []
     finally:
         conn.close()
@@ -103,7 +115,7 @@ def read_data(query: str = "SELECT * FROM people") -> list:
 
 if __name__ == "__main__":
     # Start the server
-    print("🚀Starting server... ")
+    logger.info("🚀Starting server... ")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
