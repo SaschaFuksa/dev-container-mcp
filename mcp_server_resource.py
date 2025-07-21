@@ -1,6 +1,7 @@
 """Example of a FastMCP server resource."""
 
 import argparse
+import json
 import logging
 from pathlib import Path
 
@@ -11,17 +12,38 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP("resource-demo")
 
 
-@mcp.resource("calculator://greet/{name}")
-def calculator_greeting(name: str) -> str:
-    """Get a personalized greeting."""
-    return f"Hello, {name}! Ready to calculate something today?"
+@mcp.resource("file://project-readme")
+async def get_readme() -> str:
+    """Project README content."""
+    try:
+        return Path("README.md").read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return "# Sample Project\nThis is a sample README file for MCP testing."
 
 
-@mcp.resource("usage://guide")
-def get_usage() -> str:
-    """Get usage instructions for the calculator resource."""
-    with Path("docs/usage.txt").open(encoding="utf-8") as f:
-        return f.read()
+@mcp.resource("file://user-data")
+async def get_user_data() -> str:
+    """User profiles and preferences."""
+    data = {
+        "users": [
+            {"name": "Alice", "role": "developer", "skills": ["Python", "JavaScript"]},
+            {"name": "Bob", "role": "designer", "skills": ["Figma", "Photoshop"]},
+        ],
+        "preferences": {"theme": "dark", "language": "en"},
+    }
+    return json.dumps(data, indent=2)
+
+
+@mcp.resource("memory://conversation-context")
+async def get_conversation_context() -> str:
+    """Return the current conversation context and history."""
+    context = {
+        "current_topic": "MCP implementation",
+        "user_goal": "Learn FastMCP with Ollama",
+        "tech_stack": ["Python", "Ollama", "VSCode", "Dev-Container"],
+        "previous_questions": ["How to use @mcp.resource?", "Integration with LLM?"],
+    }
+    return json.dumps(context, indent=2)
 
 
 if __name__ == "__main__":
