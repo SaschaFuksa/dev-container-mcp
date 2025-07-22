@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP("resource-demo")
 
 
-@mcp.resource("file://project-readme")
+@mcp.tool(name="get_readme", title="README", description="Returns the Project README content")
 async def get_readme() -> str:
     """Project README content."""
     try:
@@ -21,7 +21,11 @@ async def get_readme() -> str:
         return "# Sample Project\nThis is a sample README file for MCP testing."
 
 
-@mcp.resource("file://user-data")
+@mcp.tool(
+    name="get_user_data",
+    title="User Data",
+    description="Returns user profiles and preferences.",
+)
 async def get_user_data() -> str:
     """User profiles and preferences."""
     data = {
@@ -34,7 +38,11 @@ async def get_user_data() -> str:
     return json.dumps(data, indent=2)
 
 
-@mcp.resource("memory://conversation-context")
+@mcp.tool(
+    name="get_conversation_context",
+    title="Conversation Context",
+    description="Returns the current conversation context and history.",
+)
 async def get_conversation_context() -> str:
     """Return the current conversation context and history."""
     context = {
@@ -56,5 +64,5 @@ if __name__ == "__main__":
     )
     logger.info("🚀Starting server... ")
     args = parser.parse_args()
-    # python mcp_server_resource.py --server_type=sse
+    # python src/mcp_server_resource.py --server_type=sse
     mcp.run(args.server_type)

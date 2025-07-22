@@ -1,3 +1,6 @@
+[tool.setuptools]
+packages = { find = { where = ["src"] } }
+
 [project]
 name = "dev-container-mcp"
 version = "0.1.0"
@@ -10,13 +13,13 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "mcp",
+    "fastmcp",
     "pydantic",
     "websockets",
     "asyncio",
-    "nest-asyncio",
+    #"nest-asyncio",
     "langchain",
     "langchain-core",
-    "langchain-community",
     "langchain-mcp-adapters",
     "langchain-ollama",
     "httpx"

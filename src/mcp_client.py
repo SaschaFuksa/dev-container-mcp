@@ -5,7 +5,6 @@ import logging
 import sys
 
 import httpx
-import nest_asyncio
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools import Tool
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -27,9 +26,6 @@ handler.setFormatter(formatter)
 
 logger.addHandler(handler)
 
-
-# Enable nested asyncio for Jupyter-like environments
-nest_asyncio.apply()
 
 REACT_TEMPLATE = """Answer the following questions as best you can. You have access to
 the following tools:
