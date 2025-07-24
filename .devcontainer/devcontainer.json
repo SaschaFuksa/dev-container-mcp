@@ -33,7 +33,8 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "charliermarsh.ruff",
-        "ms-python.pylint"
+        "ms-python.pylint",
+        "continue.continue"
       ]
     }
   },
