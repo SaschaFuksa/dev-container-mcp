@@ -58,7 +58,7 @@ async def create_graph(math_session: ClientSession, bmi_session: ClientSession) 
 
     """
     llm = ChatOllama(
-        model="llama3.2",
+        model="qwen3:8b",
         temperature=0.6,
         streaming=False,
         base_url="http://host.docker.internal:11434",

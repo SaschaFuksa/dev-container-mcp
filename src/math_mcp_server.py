@@ -39,7 +39,7 @@ def system_prompt() -> str:
     """System prompt description."""
     LOGGER.info("🚀System prompt called.")
     return """
-    You are an AI assistant use the tools if needed.
+    /no_think You are an AI assistant use the tools if needed.
     """
 
 
