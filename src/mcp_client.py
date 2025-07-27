@@ -7,9 +7,20 @@ This example demonstrates how to set up a simple MCP client that interacts with 
 import asyncio
 import logging
 import sys
+from typing import Annotated
 
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_mcp_adapters.prompts import load_mcp_prompt
+from langchain_mcp_adapters.resources import load_mcp_resources
+from langchain_mcp_adapters.tools import load_mcp_tools
+from langchain_ollama import ChatOllama
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import AnyMessage, add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from typing_extensions import TypedDict
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -30,52 +41,96 @@ server_params = StdioServerParameters(
 )
 
 
+async def create_graph(session: ClientSession) -> StateGraph:
+    """
+    Create and compile a StateGraph for the MCP client using the provided session.
+
+    Parameters
+    ----------
+    session : ClientSession
+        The client session to use for loading tools, prompts, and resources.
+
+    Returns
+    -------
+    StateGraph
+        The compiled StateGraph ready for agent execution.
+
+    """
+    llm = ChatOllama(
+        model="llama3.2",
+        temperature=0.6,
+        streaming=False,
+        base_url="http://host.docker.internal:11434",
+    )
+
+    tools = await load_mcp_tools(session)
+    llm_with_tool = llm.bind_tools(tools)
+
+    system_prompt = await load_mcp_prompt(session, "system_prompt")
+    prompt_template = ChatPromptTemplate.from_messages(
+        [("system", system_prompt[0].content), MessagesPlaceholder("messages")],
+    )
+    chat_llm = prompt_template | llm_with_tool
+
+    # State Management
+    class State(TypedDict):
+        messages: Annotated[list[AnyMessage], add_messages]
+
+    # Nodes
+    def chat_node(state: State) -> State:
+        state["messages"] = chat_llm.invoke({"messages": state["messages"]})
+        return state
+
+    # Building the graph
+    graph_builder = StateGraph(State)
+    graph_builder.add_node("chat_node", chat_node)
+    graph_builder.add_node("tool_node", ToolNode(tools=tools))
+    graph_builder.add_edge(START, "chat_node")
+    graph_builder.add_conditional_edges(
+        "chat_node",
+        tools_condition,
+        {"tools": "tool_node", "__end__": END},
+    )
+    graph_builder.add_edge("tool_node", "chat_node")
+    graph = graph_builder.compile(checkpointer=MemorySaver())
+    return graph
+
+
 async def main() -> None:
-    """Run the MCP client."""
+    """
+    Initialize the client session for the MCP client example.
+
+    Initializes the client session, checks available tools, prompts, and resources,
+    and runs an interactive loop to communicate with the MCP server.
+    """
+    config = {"configurable": {"thread_id": 1234}}
     async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
-        # List available prompts
-        response = await session.list_prompts()
-        LOGGER.info("\n/////////////////prompts//////////////////")
-        for prompt in response.prompts:
-            LOGGER.info(prompt)
 
-        # List available resources
-        response = await session.list_resources()
-        LOGGER.info("\n/////////////////resources//////////////////")
-        for resource in response.resources:
-            LOGGER.info(resource)
+        # Check available tools
+        tools = await load_mcp_tools(session)
+        LOGGER.info("Available tools: %s", [tool.name for tool in tools])
 
-        # List available resource templates
-        response = await session.list_resource_templates()
-        LOGGER.info("\n/////////////////resource_templates//////////////////")
-        for resource_template in response.resourceTemplates:
-            LOGGER.info(resource_template)
-
-        # List available tools
-        response = await session.list_tools()
-        LOGGER.info("\n/////////////////tools//////////////////")
-        for tool in response.tools:
-            LOGGER.info(tool)
-
-        # Get a prompt
-        prompt = await session.get_prompt(
+        # Check available prompts
+        prompts = await load_mcp_prompt(
+            session,
             "example_prompt",
             arguments={"question": "what is 2+2"},
         )
-        LOGGER.info("\n/////////////////prompt//////////////////")
-        LOGGER.info(prompt.messages[0].content.text)
+        LOGGER.info("Available prompts: %s", [prompt.content for prompt in prompts])
+        prompts = await load_mcp_prompt(session, "system_prompt")
+        LOGGER.info("Available prompts: %s", [prompt.content for prompt in prompts])
 
-        # Read a resource
-        content, mime_type = await session.read_resource("greeting://Sascha")
-        LOGGER.info("\n/////////////////content//////////////////")
-        LOGGER.info(content)
-        LOGGER.info(mime_type[1][0].text)
+        # Check available resources
+        resources = await load_mcp_resources(session, uris=["greeting://Alice", "config://app"])
+        LOGGER.info("Available resources: %s", [resource.data for resource in resources])
 
-        # Call a tool
-        result = await session.call_tool("add", arguments={"a": 2, "b": 2})
-        LOGGER.info("\n/////////////////result//////////////////")
-        LOGGER.info(result.content[0].text)
+        # Use the MCP Server in the graph
+        agent = await create_graph(session)
+        while True:
+            message = input("User: ")
+            response = await agent.ainvoke({"messages": message}, config=config)
+            LOGGER.info("AI: %s", response["messages"][-1].content)
 
 
 if __name__ == "__main__":
