@@ -27,9 +27,10 @@ mcp = FastMCP("BMI")
 @mcp.tool()
 def calculate_bmi(weight: int, height: int) -> str:
     """Calculate BMI."""
+    LOGGER.info("🚀Calc BMI.")
     return "BMI: " + str(weight / (height * height))
 
 
 if __name__ == "__main__":
-    # mcp.run(transport="streamable-http")  # noqa: ERA001
-    mcp.run()
+    LOGGER.info("🚀Starting server... ")
+    mcp.run(transport="streamable-http")

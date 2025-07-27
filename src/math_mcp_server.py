@@ -27,6 +27,7 @@ mcp = FastMCP("Math")
 @mcp.prompt()
 def example_prompt(question: str) -> str:
     """Return an example prompt description."""
+    LOGGER.info("🚀Example prompt called.")
     return f"""
     You are a math assistant. Answer the question.
     Question: {question}
@@ -36,6 +37,7 @@ def example_prompt(question: str) -> str:
 @mcp.prompt()
 def system_prompt() -> str:
     """System prompt description."""
+    LOGGER.info("🚀System prompt called.")
     return """
     You are an AI assistant use the tools if needed.
     """
@@ -45,12 +47,14 @@ def system_prompt() -> str:
 @mcp.resource("greeting://{name}")
 def get_greeting(name: str) -> str:
     """Get a personalized greeting."""
+    LOGGER.info("🚀Fetching greeting for %s.", name)
     return f"Hello, {name}!"
 
 
 @mcp.resource("config://app")
 def get_config() -> str:
     """Return static configuration data."""
+    LOGGER.info("🚀Fetching app configuration.")
     return "App configuration here"
 
 
@@ -58,12 +62,14 @@ def get_config() -> str:
 @mcp.tool()
 def add(a: int, b: int) -> int:
     """Add two numbers."""
+    LOGGER.info("🚀Calc Add.")
     return a + b
 
 
 @mcp.tool()
 def multiply(a: int, b: int) -> int:
     """Multiply two numbers."""
+    LOGGER.info("🚀Calc Multiply.")
     return a * b
 
 

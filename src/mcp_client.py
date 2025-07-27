@@ -10,16 +10,15 @@ import sys
 from typing import Annotated
 
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.prompts import load_mcp_prompt
-from langchain_mcp_adapters.resources import load_mcp_resources
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langchain_ollama import ChatOllama
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import AnyMessage, add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp.client.session import ClientSession
 from typing_extensions import TypedDict
 
 LOGGER = logging.getLogger(__name__)
@@ -33,22 +32,24 @@ handler.setFormatter(formatter)
 
 LOGGER.addHandler(handler)
 
-# Math Server Parameters
-server_params = StdioServerParameters(
-    command="python",
-    args=["src/math_mcp_server.py"],
-    env=None,
+client = MultiServerMCPClient(
+    {
+        "math": {
+            "command": "python",
+            "args": ["src/math_mcp_server.py"],
+            "transport": "stdio",
+        },
+        "bmi": {
+            "url": "http://localhost:8000/mcp",
+            "transport": "streamable_http",
+        },
+    },
 )
 
 
-async def create_graph(session: ClientSession) -> StateGraph:
+async def create_graph(math_session: ClientSession, bmi_session: ClientSession) -> StateGraph:
     """
     Create and compile a StateGraph for the MCP client using the provided session.
-
-    Parameters
-    ----------
-    session : ClientSession
-        The client session to use for loading tools, prompts, and resources.
 
     Returns
     -------
@@ -63,10 +64,12 @@ async def create_graph(session: ClientSession) -> StateGraph:
         base_url="http://host.docker.internal:11434",
     )
 
-    tools = await load_mcp_tools(session)
+    math_tools = await load_mcp_tools(math_session)
+    bmi_tools = await load_mcp_tools(bmi_session)
+    tools = math_tools + bmi_tools
     llm_with_tool = llm.bind_tools(tools)
 
-    system_prompt = await load_mcp_prompt(session, "system_prompt")
+    system_prompt = await load_mcp_prompt(math_session, "system_prompt")
     prompt_template = ChatPromptTemplate.from_messages(
         [("system", system_prompt[0].content), MessagesPlaceholder("messages")],
     )
@@ -104,29 +107,8 @@ async def main() -> None:
     and runs an interactive loop to communicate with the MCP server.
     """
     config = {"configurable": {"thread_id": 1234}}
-    async with stdio_client(server_params) as (read, write), ClientSession(read, write) as session:
-        await session.initialize()
-
-        # Check available tools
-        tools = await load_mcp_tools(session)
-        LOGGER.info("Available tools: %s", [tool.name for tool in tools])
-
-        # Check available prompts
-        prompts = await load_mcp_prompt(
-            session,
-            "example_prompt",
-            arguments={"question": "what is 2+2"},
-        )
-        LOGGER.info("Available prompts: %s", [prompt.content for prompt in prompts])
-        prompts = await load_mcp_prompt(session, "system_prompt")
-        LOGGER.info("Available prompts: %s", [prompt.content for prompt in prompts])
-
-        # Check available resources
-        resources = await load_mcp_resources(session, uris=["greeting://Alice", "config://app"])
-        LOGGER.info("Available resources: %s", [resource.data for resource in resources])
-
-        # Use the MCP Server in the graph
-        agent = await create_graph(session)
+    async with client.session("math") as math_session, client.session("bmi") as bmi_session:
+        agent = await create_graph(math_session, bmi_session)
         while True:
             message = input("User: ")
             response = await agent.ainvoke({"messages": message}, config=config)
